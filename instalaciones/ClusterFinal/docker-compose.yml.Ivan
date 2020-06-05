@@ -1,0 +1,569 @@
+version: '3.0'
+services:
+
+# 2 Maestros
+# 4 datas (1 votacion)
+# 2 ingestas
+# 2 coordinadores
+# -------
+# 10 Nodos
+  
+  # maestro1
+  # maestro2
+  # ingesta1
+  # ingesta2
+  # coordinador1
+  # coordinador2
+  # data1
+  # data2
+  # data3
+  # data4
+  
+
+# 3 redes 
+# Securizar HTTPS
+#.  Man in middle
+    # IPMB
+    # HOLA
+    # Cifrado: Clave simetrica vs asimetrica (2 claves: publica/privada)
+#. Suplantación de identidad
+    # Certificados (publica)
+    # HTTPS
+# Puertos de comunicacion:
+
+# 9200 : Comunicación con clientes finales (Indexar, búsqueda): 
+#         SSL1 (servidor presenta certificado)
+
+# 9300 : Comunicación entre los nodos
+#         SSL2 (ambos presenta certificado)
+
+  maestro1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.7.0
+    container_name: maestro1
+    ports:
+      - 8080:9200
+    volumes:
+      - /home/ubuntu/environment/datos/nodo1:/usr/share/elasticsearch/data
+      - /home/ubuntu/environment/datos/certs/maestro1:/usr/share/elasticsearch/config/certificates/own
+      - /home/ubuntu/environment/datos/certs/ca:/usr/share/elasticsearch/config/certificates/ca
+    networks:
+      - backnet
+    environment:
+      - node.name=maestro1
+      - cluster.name=MiCluster
+      - discovery.seed_hosts=maestro2
+      - cluster.initial_master_nodes=maestro1,maestro2 # Limitar a TODOS los posibles maestro
+      - "ES_JAVA_OPTS=-Xms220m -Xmx220m"
+#      - bootstrap.memory_lock=true # Desactivar el swapping para la memoria de elastic
+      - node.master=true
+      - node.voting_only=false 
+      - node.data=false 
+      - node.ingest=false 
+      - node.remote_cluster_client=false  # cluster.remote.connect: false 
+
+
+      - xpack.license.self_generated.type=trial # basic
+      - xpack.security.enabled=true
+
+      - xpack.security.http.ssl.enabled=true #SSL1
+      - xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certificates/own/maestro1.key
+      - xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/maestro1.crt
+
+      - xpack.security.transport.ssl.enabled=true #SSL2
+      - xpack.security.transport.ssl.verification_mode=certificate 
+      - xpack.security.transport.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.transport.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/maestro1.crt
+      - xpack.security.transport.ssl.key=/usr/share/elasticsearch/config/certificates/own/maestro1.key
+     
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - cluster.join.timeout=180s
+      - cluster.publish.timeout=180s
+      
+      # usuario: elastic
+      - ELASTIC_PASSWORD=password 
+
+          
+
+  maestro2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.7.0
+    container_name: maestro2
+    volumes:
+      - /home/ubuntu/environment/datos/nodo2:/usr/share/elasticsearch/data
+      - /home/ubuntu/environment/datos/certs/maestro2:/usr/share/elasticsearch/config/certificates/own
+      - /home/ubuntu/environment/datos/certs/ca:/usr/share/elasticsearch/config/certificates/ca
+    networks:
+      - backnet
+    environment:
+      - node.name=maestro2
+      - cluster.name=MiCluster
+      - discovery.seed_hosts=maestro1
+      - cluster.initial_master_nodes=maestro1,maestro2 # Limitar a TODOS los posibles maestro
+      - "ES_JAVA_OPTS=-Xms220m -Xmx220m"
+#      - bootstrap.memory_lock=true # Desactivar el swapping para la memoria de elastic
+      - node.master=true
+      - node.voting_only=false 
+      - node.data=false 
+      - node.ingest=false 
+      - node.remote_cluster_client=false  # cluster.remote.connect: false 
+
+      - xpack.license.self_generated.type=trial # basic
+      - xpack.security.enabled=true
+
+      - xpack.security.http.ssl.enabled=true #SSL1
+      - xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certificates/own/maestro2.key
+      - xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/maestro2.crt
+
+      - xpack.security.transport.ssl.enabled=true #SSL2
+      - xpack.security.transport.ssl.verification_mode=certificate 
+      - xpack.security.transport.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.transport.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/maestro2.crt
+      - xpack.security.transport.ssl.key=/usr/share/elasticsearch/config/certificates/own/maestro2.key
+     
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - cluster.join.timeout=180s
+      - cluster.publish.timeout=180s
+      
+      # usuario: elastic
+      - ELASTIC_PASSWORD=password 
+          
+          
+  data1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.7.0
+    container_name: data1
+    volumes:
+      - /home/ubuntu/environment/datos/nodo3:/usr/share/elasticsearch/data
+      - /home/ubuntu/environment/datos/certs/data1:/usr/share/elasticsearch/config/certificates/own
+      - /home/ubuntu/environment/datos/certs/ca:/usr/share/elasticsearch/config/certificates/ca
+    networks:
+      - backnet
+    environment:
+      - node.name=data1
+      - cluster.name=MiCluster
+      - discovery.seed_hosts=maestro1,maestro2
+      - "ES_JAVA_OPTS=-Xms220m -Xmx220m"
+#      - bootstrap.memory_lock=true # Desactivar el swapping para la memoria de elastic
+      - node.master=true
+      - node.voting_only=true 
+      - node.data=true 
+      - node.ingest=false 
+      - node.remote_cluster_client=false  # cluster.remote.connect: false 
+
+      - xpack.license.self_generated.type=trial # basic
+      - xpack.security.enabled=true
+
+      - xpack.security.http.ssl.enabled=true #SSL1
+      - xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certificates/own/data1.key
+      - xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/data1.crt
+
+      - xpack.security.transport.ssl.enabled=true #SSL2
+      - xpack.security.transport.ssl.verification_mode=certificate 
+      - xpack.security.transport.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.transport.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/data1.crt
+      - xpack.security.transport.ssl.key=/usr/share/elasticsearch/config/certificates/own/data1.key
+     
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - cluster.join.timeout=180s
+      - cluster.publish.timeout=180s
+      
+      # usuario: elastic
+      - ELASTIC_PASSWORD=password 
+
+  data2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.7.0
+    container_name: data2
+    volumes:
+      - /home/ubuntu/environment/datos/nodo4:/usr/share/elasticsearch/data
+      - /home/ubuntu/environment/datos/certs/data2:/usr/share/elasticsearch/config/certificates/own
+      - /home/ubuntu/environment/datos/certs/ca:/usr/share/elasticsearch/config/certificates/ca
+    networks:
+      - backnet
+    environment:
+      - node.name=data2
+      - cluster.name=MiCluster
+      - discovery.seed_hosts=maestro1,maestro2
+      - "ES_JAVA_OPTS=-Xms220m -Xmx220m"
+#      - bootstrap.memory_lock=true # Desactivar el swapping para la memoria de elastic
+      - node.master=false
+      - node.voting_only=false 
+      - node.data=true 
+      - node.ingest=false 
+      - node.remote_cluster_client=false  # cluster.remote.connect: false 
+ 
+      - xpack.license.self_generated.type=trial # basic
+      - xpack.security.enabled=true
+
+      - xpack.security.http.ssl.enabled=true #SSL1
+      - xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certificates/own/data2.key
+      - xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/data2.crt
+
+      - xpack.security.transport.ssl.enabled=true #SSL2
+      - xpack.security.transport.ssl.verification_mode=certificate 
+      - xpack.security.transport.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.transport.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/data2.crt
+      - xpack.security.transport.ssl.key=/usr/share/elasticsearch/config/certificates/own/data2.key
+     
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - cluster.join.timeout=180s
+      - cluster.publish.timeout=180s
+      
+      # usuario: elastic
+      - ELASTIC_PASSWORD=password 
+         
+  data3:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.7.0
+    container_name: data3
+    volumes:
+      - /home/ubuntu/environment/datos/nodo5:/usr/share/elasticsearch/data
+      - /home/ubuntu/environment/datos/certs/data3:/usr/share/elasticsearch/config/certificates/own
+      - /home/ubuntu/environment/datos/certs/ca:/usr/share/elasticsearch/config/certificates/ca
+    networks:
+      - backnet
+    environment:
+      - node.name=data3
+      - cluster.name=MiCluster
+      - discovery.seed_hosts=maestro1,maestro2
+      - "ES_JAVA_OPTS=-Xms220m -Xmx220m"
+#      - bootstrap.memory_lock=true # Desactivar el swapping para la memoria de elastic
+      - node.master=false
+      - node.voting_only=false 
+      - node.data=true 
+      - node.ingest=false 
+      - node.remote_cluster_client=false  # cluster.remote.connect: false 
+      - node.attr.color=azul
+
+      - xpack.license.self_generated.type=trial # basic
+      - xpack.security.enabled=true
+
+      - xpack.security.http.ssl.enabled=true #SSL1
+      - xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certificates/own/data3.key
+      - xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/data3.crt
+
+      - xpack.security.transport.ssl.enabled=true #SSL2
+      - xpack.security.transport.ssl.verification_mode=certificate 
+      - xpack.security.transport.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.transport.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/data3.crt
+      - xpack.security.transport.ssl.key=/usr/share/elasticsearch/config/certificates/own/data3.key
+     
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - cluster.join.timeout=180s
+      - cluster.publish.timeout=180s
+      
+      # usuario: elastic
+      - ELASTIC_PASSWORD=password 
+          
+  data4:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.7.0
+    container_name: data4
+    volumes:
+      - /home/ubuntu/environment/datos/nodo6:/usr/share/elasticsearch/data
+      - /home/ubuntu/environment/datos/certs/data4:/usr/share/elasticsearch/config/certificates/own
+      - /home/ubuntu/environment/datos/certs/ca:/usr/share/elasticsearch/config/certificates/ca
+    networks:
+      - backnet
+    environment:
+      - node.name=data4
+      - cluster.name=MiCluster
+      - discovery.seed_hosts=maestro1,maestro2
+      - "ES_JAVA_OPTS=-Xms220m -Xmx220m"
+#      - bootstrap.memory_lock=true # Desactivar el swapping para la memoria de elastic
+      - node.master=false
+      - node.voting_only=false 
+      - node.data=true 
+      - node.ingest=false 
+      - node.remote_cluster_client=false  # cluster.remote.connect: false 
+      - node.attr.color=azul,verde
+
+      - xpack.license.self_generated.type=trial # basic
+      - xpack.security.enabled=true
+
+      - xpack.security.http.ssl.enabled=true #SSL1
+      - xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certificates/own/data4.key
+      - xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/data4.crt
+
+      - xpack.security.transport.ssl.enabled=true #SSL2
+      - xpack.security.transport.ssl.verification_mode=certificate 
+      - xpack.security.transport.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.transport.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/data4.crt
+      - xpack.security.transport.ssl.key=/usr/share/elasticsearch/config/certificates/own/data4.key
+     
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - cluster.join.timeout=180s
+      - cluster.publish.timeout=180s
+      
+      # usuario: elastic
+      - ELASTIC_PASSWORD=password 
+
+          
+  ingesta1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.7.0
+    container_name: ingesta1
+    volumes:
+      - /home/ubuntu/environment/datos/nodo7:/usr/share/elasticsearch/data
+      - /home/ubuntu/environment/datos/certs/ingesta1:/usr/share/elasticsearch/config/certificates/own
+      - /home/ubuntu/environment/datos/certs/ca:/usr/share/elasticsearch/config/certificates/ca
+    networks:
+      - backnet # _eth0_
+      - frontnet # eth1_
+    environment:
+      - transport.host=_eth0_
+      - node.name=ingesta1
+      - cluster.name=MiCluster
+      - discovery.seed_hosts=maestro1,maestro2
+      - "ES_JAVA_OPTS=-Xms220m -Xmx220m"
+#      - bootstrap.memory_lock=true # Desactivar el swapping para la memoria de elastic
+      - node.master=false
+      - node.voting_only=false 
+      - node.data=false 
+      - node.ingest=true 
+      - node.remote_cluster_client=false  # cluster.remote.connect: false 
+
+      - xpack.license.self_generated.type=trial # basic
+      - xpack.security.enabled=true
+
+      - xpack.security.http.ssl.enabled=true #SSL1
+      - xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certificates/own/ingesta1.key
+      - xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/ingesta1.crt
+
+      - xpack.security.transport.ssl.enabled=true #SSL2
+      - xpack.security.transport.ssl.verification_mode=certificate 
+      - xpack.security.transport.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.transport.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/ingesta1.crt
+      - xpack.security.transport.ssl.key=/usr/share/elasticsearch/config/certificates/own/ingesta1.key
+     
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - cluster.join.timeout=180s
+      - cluster.publish.timeout=180s
+      
+      # usuario: elastic
+      - ELASTIC_PASSWORD=password 
+          
+          
+  ingesta2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.7.0
+    container_name: ingesta2
+    volumes:
+      - /home/ubuntu/environment/datos/nodo8:/usr/share/elasticsearch/data
+      - /home/ubuntu/environment/datos/certs/ingesta2:/usr/share/elasticsearch/config/certificates/own
+      - /home/ubuntu/environment/datos/certs/ca:/usr/share/elasticsearch/config/certificates/ca
+    networks:
+      - backnet
+      - frontnet
+    environment:
+      - transport.host=_eth0_
+      - node.name=ingesta2
+      - cluster.name=MiCluster
+      - discovery.seed_hosts=maestro1,maestro2
+      - "ES_JAVA_OPTS=-Xms220m -Xmx220m"
+#      - bootstrap.memory_lock=true # Desactivar el swapping para la memoria de elastic
+      - node.master=false
+      - node.voting_only=false 
+      - node.data=false 
+      - node.ingest=true 
+      - node.remote_cluster_client=false  # cluster.remote.connect: false 
+ 
+      - xpack.license.self_generated.type=trial # basic
+      - xpack.security.enabled=true
+
+      - xpack.security.http.ssl.enabled=true #SSL1
+      - xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certificates/own/ingesta2.key
+      - xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/ingesta2.crt
+
+      - xpack.security.transport.ssl.enabled=true #SSL2
+      - xpack.security.transport.ssl.verification_mode=certificate 
+      - xpack.security.transport.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.transport.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/ingesta2.crt
+      - xpack.security.transport.ssl.key=/usr/share/elasticsearch/config/certificates/own/ingesta2.key
+     
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - cluster.join.timeout=180s
+      - cluster.publish.timeout=180s
+      
+      # usuario: elastic
+      - ELASTIC_PASSWORD=password 
+         
+          
+  coordinador1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.7.0
+    container_name: coordinador1
+    volumes:
+      - /home/ubuntu/environment/datos/nodo9:/usr/share/elasticsearch/data
+      - /home/ubuntu/environment/datos/certs/coordinador1:/usr/share/elasticsearch/config/certificates/own
+      - /home/ubuntu/environment/datos/certs/ca:/usr/share/elasticsearch/config/certificates/ca
+    networks:
+      - backnet #eth0 9300
+      - frontnet #eth1 
+      #               v 9200 y com. rest
+      # Network.host (HTTP.host.port y TRANSPORT.host.port)
+      #                                ^ 9300 y com. internas
+    environment:
+      #- network.host=0.0.0.0 -> Tanto transport como http abren sus puertos para 0.0.0.0
+#      - http.port=9247
+#      - transport.port=9351
+#      - transport.host=_eth1_
+      - transport.host=_eth0_
+      - node.name=coordinador1
+      - cluster.name=MiCluster
+      - discovery.seed_hosts=maestro1,maestro2
+      - "ES_JAVA_OPTS=-Xms220m -Xmx220m"
+#      - bootstrap.memory_lock=true # Desactivar el swapping para la memoria de elastic
+      - node.master=false
+      - node.voting_only=false 
+      - node.data=false 
+      - node.ingest=false 
+      - node.remote_cluster_client=false  # cluster.remote.connect: false 
+ 
+      - xpack.license.self_generated.type=trial # basic
+      - xpack.security.enabled=true
+
+      - xpack.security.http.ssl.enabled=true #SSL1
+      - xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certificates/own/coordinador1.key
+      - xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/coordinador1.crt
+
+      - xpack.security.transport.ssl.enabled=true #SSL2
+      - xpack.security.transport.ssl.verification_mode=certificate 
+      - xpack.security.transport.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.transport.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/coordinador1.crt
+      - xpack.security.transport.ssl.key=/usr/share/elasticsearch/config/certificates/own/coordinador1.key
+     
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - cluster.join.timeout=180s
+      - cluster.publish.timeout=180s
+      
+      # usuario: elastic
+      - ELASTIC_PASSWORD=password 
+         
+          
+  coordinador2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.7.0
+    container_name: coordinador2
+    volumes:
+      - /home/ubuntu/environment/datos/nodo10:/usr/share/elasticsearch/data
+      - /home/ubuntu/environment/datos/certs/coordinador2:/usr/share/elasticsearch/config/certificates/own
+      - /home/ubuntu/environment/datos/certs/ca:/usr/share/elasticsearch/config/certificates/ca
+    networks:
+      - backnet
+      - frontnet
+    environment:
+      - transport.host=_eth0_
+      - node.name=coordinador2
+      - cluster.name=MiCluster
+      - discovery.seed_hosts=maestro1,maestro2
+      - "ES_JAVA_OPTS=-Xms220m -Xmx220m"
+#      - bootstrap.memory_lock=true # Desactivar el swapping para la memoria de elastic
+      - node.master=false
+      - node.voting_only=false 
+      - node.data=false 
+      - node.ingest=false 
+      - node.remote_cluster_client=false  # cluster.remote.connect: false 
+ 
+      - xpack.license.self_generated.type=trial # basic
+      - xpack.security.enabled=true
+
+      - xpack.security.http.ssl.enabled=true #SSL1
+      - xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certificates/own/coordinador2.key
+      - xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/coordinador2.crt
+
+      - xpack.security.transport.ssl.enabled=true #SSL2
+      - xpack.security.transport.ssl.verification_mode=certificate 
+      - xpack.security.transport.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+      - xpack.security.transport.ssl.certificate=/usr/share/elasticsearch/config/certificates/own/coordinador2.crt
+      - xpack.security.transport.ssl.key=/usr/share/elasticsearch/config/certificates/own/coordinador2.key
+     
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - cluster.join.timeout=180s
+      - cluster.publish.timeout=180s
+      
+      # usuario: elastic
+      - ELASTIC_PASSWORD=password 
+         
+
+
+          
+  cerebro:
+    image: lmenezes/cerebro:0.8.5
+    container_name: cerebro
+    networks:
+      - frontnet
+    ports:
+      - 8081:9000
+    volumes:
+      - ./application.conf:/opt/cerebro/conf/application.conf
+      - /home/ubuntu/environment/datos/certs/ca:/opt/cerebro/ca
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.7.0
+    container_name: kibana
+    ports:
+      - 8082:5601
+    networks:
+      - frontnet
+    volumes:
+      - /home/ubuntu/environment/datos/certs/kibana:/etc/kibana/config/certs/kibana
+      - /home/ubuntu/environment/datos/certs/ca:/etc/kibana/config/certs/ca
+    environment:
+      ELASTICSEARCH_HOSTS: "https://coordinador1:9200"
+      SERVER_NAME: "kibana"
+      SERVER_HOST: "kibana"
+
+      ELASTICSEARCH_USERNAME: "elastic"
+      ELASTICSEARCH_PASSWORD: "password"
+      ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES:  "/etc/kibana/config/certs/ca/ca.crt" 
+      
+      ##### Para que cuando yo como usuario me conecte con kibana también sea por https
+      SERVER_SSL_ENABLED: "false" # true
+      SERVER_SSL_CERTIFICATE: "/etc/kibana/config/certs/kibana/kibana.crt"
+      SERVER_SSL_KEY: "/etc/kibana/config/certs/kibana/kibana.key"
+
+  create_certs:
+    container_name: create_certs
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.7.0
+    command: >
+      bash -c '
+        if [[ ! -f /certs/bundle.zip ]]; then
+          bin/elasticsearch-certutil cert --silent --pem --in config/certificates/instances.yml -out /certs/bundle.zip;
+          chown -R 1000:0 /certs
+        fi
+      '
+    user: "0"
+    working_dir: /usr/share/elasticsearch
+    volumes: 
+      - 'certsroot:/certs'
+      - '.:/usr/share/elasticsearch/config/certificates'
+
+volumes:
+  certsroot:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+#OJO !!!!                   v               v
+      device: '/home/ubuntu/environment/datos/certs'
+ 
+networks:
+  backnet:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.10.0.0/8
+
+  frontnet:
+    ipam:
+      driver: default
+      config:
+        - subnet: 20.10.0.0/8
+
+  publicnet:
+    ipam:
+      driver: default
+      config:
+        - subnet: 30.10.0.0/8
